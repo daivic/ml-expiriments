@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv, find_dotenv
-from langchain import HuggingFaceHub
-from langchain import PromptTemplate, LLMChain, OpenAI
+from langchain import HuggingFaceHub, FAISS
+from langchain import PromptTemplate, LLMChain
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.summarize import load_summarize_chain
 from langchain.document_loaders import YoutubeLoader
@@ -10,6 +10,7 @@ import textwrap
 # --------------------------------------------------------------
 # Load the HuggingFaceHub API token from the .env file
 # --------------------------------------------------------------
+
 
 load_dotenv(find_dotenv())
 HUGGINGFACEHUB_API_TOKEN = os.environ["HUGGINGFACEHUB_API_TOKEN"]
@@ -21,7 +22,7 @@ HUGGINGFACEHUB_API_TOKEN = os.environ["HUGGINGFACEHUB_API_TOKEN"]
 
 repo_id = "tiiuae/falcon-7b-instruct"  # See https://huggingface.co/models?pipeline_tag=text-generation&sort=downloads for some other options
 falcon_llm = HuggingFaceHub(
-    repo_id=repo_id, model_kwargs={"temperature": 0.1, "max_new_tokens": 500}
+    repo_id=repo_id, model_kwargs={"temperature": 1.0, "max_new_tokens": 500}
 )
 
 
@@ -59,6 +60,8 @@ transcript = loader.load()
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=3000)
 docs = text_splitter.split_documents(transcript)
 
+db = FAISS.from_documents(docs)
+
 # --------------------------------------------------------------
 # Summarization with LangChain
 # --------------------------------------------------------------
@@ -79,16 +82,3 @@ wrapped_text = textwrap.fill(
 print(wrapped_text)
 
 
-# --------------------------------------------------------------
-# Load an OpenAI model for comparison
-# --------------------------------------------------------------
-
-openai_llm = OpenAI(
-    model_name="text-davinci-003", temperature=0.1, max_tokens=500
-)  # max token length is 4097
-chain = load_summarize_chain(openai_llm, chain_type="map_reduce", verbose=True)
-output_summary = chain.run(docs)
-wrapped_text = textwrap.fill(
-    output_summary, width=100, break_long_words=False, replace_whitespace=False
-)
-print(wrapped_text)
